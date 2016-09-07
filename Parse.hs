@@ -1,7 +1,7 @@
 module Main where
 
 import Control.Monad (void)
-import Data.Char (toUpper)
+import Data.Char (toUpper, isLower)
 import Data.List (intersperse, isSuffixOf)
 import Text.Parsec
 import Text.Parsec.Language (javaStyle)
@@ -197,20 +197,47 @@ up :: String -> String
 up = map toUpper
 
 pp :: DEF -> IO ()
-pp (ENUM nm n xs) = do
+pp (ENUM nm _n xs) = do
     putStr "data "
-    putStr $ up nm
-    putStr " = "
-    putStrLn $ concat $ intersperse " | " $ map up $ filter (\x -> not ("_RESERVED" `isSuffixOf` x)) $ map extract xs
+    putStr nm
+    putStr " = \n      "
+    putStrLn $ concat $ intersperse "\n    | " $ map up $ filter (\x -> not ("_RESERVED" `isSuffixOf` x)) $ map extract xs
 pp (ALIAS (TYPE new old _)) = do
     let old' = up old
     putStrLn $ "newtype " ++ new ++ " = " ++ new ++ " " ++ old'
-pp (STRUCT nm _)  = do
+pp (STRUCT nm ms)  = do
     putStrLn $ "data " ++ nm ++ " = " ++ nm ++ " {"
+    go $ filter isFixed ms
     putStrLn "  }"
+
+go :: [MEMBER] -> IO ()
+go [] = return ()
+go (a:as) = do
+    ppFixed1 a
+    mapM_ ppFixed as
+
+ppFixed1 :: MEMBER -> IO ()
+ppFixed1 (FIXED (TYPE field typ _)) = do
+    putStrLn $ "    _" ++ field ++ " :: " ++ up' typ
+ppFixed1 _ = return ()
+
+ppFixed :: MEMBER -> IO ()
+ppFixed (FIXED (TYPE field typ _)) = do
+    putStrLn $ "  , _" ++ field ++ " :: " ++ up' typ
+ppFixed _ = return ()
+
+isFixed :: MEMBER -> Bool
+isFixed (FIXED _) = True
+isFixed _         = False
 
 extract :: ENUMITEM -> ENUMNAME
 extract (ENUMITEM nm _) = nm
+
+up' :: String -> String
+up' "" = ""
+up' aas@(a:as)
+  | isLower a = up aas
+  | otherwise = aas
 
 ----------------------------------------------------------------
 
@@ -220,7 +247,11 @@ main = do
     case ex of
       Left err -> print err
       Right  x -> do
+          putStrLn "{-# LANGUAGE DuplicateRecordFields #-}"
           putStrLn "import Data.Word"
           putStrLn "type UINT8 = Word8"
+          putStrLn "type UINT16 = Word16"
+          putStrLn "type UINT24 = Word"
+          putStrLn "type UINT32 = Word32"
           putStrLn "type OPAQUE = ()"
           mapM_ pp x
