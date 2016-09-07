@@ -203,9 +203,8 @@ pp (ENUM nm n xs) = do
     putStr " = "
     putStrLn $ concat $ intersperse " | " $ map up $ filter (\x -> not ("_RESERVED" `isSuffixOf` x)) $ map extract xs
 pp (ALIAS (TYPE new old _)) = do
-    let new' = up new
-        old' = up old
-    putStrLn $ "newtype " ++ new ++ " = " ++ new ++ " " ++ old
+    let old' = up old
+    putStrLn $ "newtype " ++ new ++ " = " ++ new ++ " " ++ old'
 pp (STRUCT nm _)  = do
     putStrLn $ "data " ++ nm ++ " = " ++ nm ++ " {"
     putStrLn "  }"
@@ -217,7 +216,7 @@ extract (ENUMITEM nm _) = nm
 
 main :: IO ()
 main = do
-    ex <- parseFromFile tls13 "tls13"
+    ex <- parse tls13 "tls13" <$> getContents
     case ex of
       Left err -> print err
       Right  x -> do
