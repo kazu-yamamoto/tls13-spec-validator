@@ -1,7 +1,7 @@
 module Main where
 
 import Control.Monad (void)
-import Data.Char (toUpper, isLower)
+import Data.Char (toUpper)
 import Data.List (intersperse, isSuffixOf)
 import Text.Parsec
 import Text.Parsec.Language (javaStyle)
@@ -216,31 +216,49 @@ pp (ENUM nm _n xs) = do
     putStr "\n    deriving (Show,Eq,Ord,Enum,Bounded)\n"
 pp (ALIAS (TYPE new old _)) = do
     let old' = cap old
-    putStrLn $ "newtype " ++ new ++ " = " ++ new ++ " " ++ old'
+    putStr "newtype "
+    putStr new
+    putStr " = "
+    putStr new
+    putStr " "
+    putStr old'
+    putStr "\n"
 pp (STRUCT nm ms)  = do
-    putStrLn $ "data " ++ nm ++ " = " ++ nm ++ " {"
-    ppMember $ filter isFixed ms
-    putStrLn "  }"
+    putStr "data "
+    putStr nm
+    putStr " = "
+    putStr nm
+    putStr " {\n"
+    ppMembers ms
+    putStr "  }\n"
 
-ppMember :: [MEMBER] -> IO ()
-ppMember [] = return ()
-ppMember (a:as) = do
-    ppFixed1 a
-    mapM_ ppFixed as
+ppMembers :: [MEMBER] -> IO ()
+ppMembers [] = return ()
+ppMembers (m:ms) = do
+    ppMember "    _" m
+    mapM_ (ppMember "  , _") ms
 
-ppFixed1 :: MEMBER -> IO ()
-ppFixed1 (FIXED (TYPE field typ _)) = do
-    putStrLn $ "    _" ++ field ++ " :: " ++ cap typ
-ppFixed1 _ = return ()
+ppMember :: String -> MEMBER -> IO ()
+ppMember pre (FIXED (TYPE field typ _)) = ppField pre field typ
+ppMember pre (SELECT _ _ cs) = ppCases pre cs
 
-ppFixed :: MEMBER -> IO ()
-ppFixed (FIXED (TYPE field typ _)) = do
-    putStrLn $ "  , _" ++ field ++ " :: " ++ cap typ
-ppFixed _ = return ()
+ppCases :: String -> [CASE] -> IO ()
+ppCases _   [] = return ()
+ppCases pre (c:cs) = do
+    ppCase pre c
+    mapM_ (ppCase "  , _") cs
 
-isFixed :: MEMBER -> Bool
-isFixed (FIXED _) = True
-isFixed _         = False
+ppCase :: String -> CASE -> IO ()
+ppCase pre (CASE field (CASE1 typ)) = ppField pre field typ
+ppCase pre (CASE field (CASE2 (TYPE _ typ _))) = ppField pre field typ
+
+ppField :: String -> String -> String -> IO ()
+ppField pre field typ = do
+    putStr pre
+    putStr field
+    putStr " :: "
+    putStr $ cap typ
+    putStr "\n"
 
 ----------------------------------------------------------------
 
