@@ -199,20 +199,23 @@ tls13 = do
 up :: String -> String
 up = map toUpper
 
-up' :: String -> String
-up' "" = ""
-up' aas@(a:as)
-  | isLower a = up aas
-  | otherwise = aas
+cap :: String -> String
+cap "" = ""
+cap (c:cs) = toUpper c : cs
+
+nonReserved :: String -> Bool
+nonReserved x = not ("_RESERVED" `isSuffixOf` x)
 
 pp :: DEF -> IO ()
 pp (ENUM nm _n xs) = do
     putStr "data "
     putStr nm
     putStr " = \n      "
-    putStrLn $ concat $ intersperse "\n    | " $ map up $ filter (\x -> not ("_RESERVED" `isSuffixOf` x)) $ map enumname xs
+    let xs' = intersperse "\n    | " $ map up $ filter nonReserved $ map enumname xs
+    mapM_ putStr xs'
+    putStr "\n    deriving (Show,Eq,Ord,Enum,Bounded)\n"
 pp (ALIAS (TYPE new old _)) = do
-    let old' = up old
+    let old' = cap old
     putStrLn $ "newtype " ++ new ++ " = " ++ new ++ " " ++ old'
 pp (STRUCT nm ms)  = do
     putStrLn $ "data " ++ nm ++ " = " ++ nm ++ " {"
@@ -227,12 +230,12 @@ ppMember (a:as) = do
 
 ppFixed1 :: MEMBER -> IO ()
 ppFixed1 (FIXED (TYPE field typ _)) = do
-    putStrLn $ "    _" ++ field ++ " :: " ++ up' typ
+    putStrLn $ "    _" ++ field ++ " :: " ++ cap typ
 ppFixed1 _ = return ()
 
 ppFixed :: MEMBER -> IO ()
 ppFixed (FIXED (TYPE field typ _)) = do
-    putStrLn $ "  , _" ++ field ++ " :: " ++ up' typ
+    putStrLn $ "  , _" ++ field ++ " :: " ++ cap typ
 ppFixed _ = return ()
 
 isFixed :: MEMBER -> Bool
@@ -249,9 +252,9 @@ main = do
       Right  x -> do
           putStrLn "{-# LANGUAGE DuplicateRecordFields #-}"
           putStrLn "import Data.Word"
-          putStrLn "type UINT8 = Word8"
-          putStrLn "type UINT16 = Word16"
-          putStrLn "type UINT24 = Word"
-          putStrLn "type UINT32 = Word32"
-          putStrLn "type OPAQUE = ()"
+          putStrLn "type Uint8 = Word8"
+          putStrLn "type Uint16 = Word16"
+          putStrLn "type Uint24 = Word"
+          putStrLn "type Uint32 = Word32"
+          putStrLn "type Opaque = ()"
           mapM_ pp x
