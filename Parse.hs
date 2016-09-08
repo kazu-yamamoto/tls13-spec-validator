@@ -73,7 +73,10 @@ data DEF = ENUM   DEFNAME Int [ENUMITEM] -- Int = max value
          deriving Show
 
 type ENUMNAME = String
-data ENUMITEM = ENUMITEM ENUMNAME ENUMVALUE deriving Show
+data ENUMITEM = ENUMITEM {
+    enumname  :: ENUMNAME
+  , enumvalue :: ENUMVALUE
+  } deriving Show
 data ENUMVALUE = SOLO  Int
                | RANGE Int Int
                deriving Show
@@ -196,23 +199,29 @@ tls13 = do
 up :: String -> String
 up = map toUpper
 
+up' :: String -> String
+up' "" = ""
+up' aas@(a:as)
+  | isLower a = up aas
+  | otherwise = aas
+
 pp :: DEF -> IO ()
 pp (ENUM nm _n xs) = do
     putStr "data "
     putStr nm
     putStr " = \n      "
-    putStrLn $ concat $ intersperse "\n    | " $ map up $ filter (\x -> not ("_RESERVED" `isSuffixOf` x)) $ map extract xs
+    putStrLn $ concat $ intersperse "\n    | " $ map up $ filter (\x -> not ("_RESERVED" `isSuffixOf` x)) $ map enumname xs
 pp (ALIAS (TYPE new old _)) = do
     let old' = up old
     putStrLn $ "newtype " ++ new ++ " = " ++ new ++ " " ++ old'
 pp (STRUCT nm ms)  = do
     putStrLn $ "data " ++ nm ++ " = " ++ nm ++ " {"
-    go $ filter isFixed ms
+    ppMember $ filter isFixed ms
     putStrLn "  }"
 
-go :: [MEMBER] -> IO ()
-go [] = return ()
-go (a:as) = do
+ppMember :: [MEMBER] -> IO ()
+ppMember [] = return ()
+ppMember (a:as) = do
     ppFixed1 a
     mapM_ ppFixed as
 
@@ -229,15 +238,6 @@ ppFixed _ = return ()
 isFixed :: MEMBER -> Bool
 isFixed (FIXED _) = True
 isFixed _         = False
-
-extract :: ENUMITEM -> ENUMNAME
-extract (ENUMITEM nm _) = nm
-
-up' :: String -> String
-up' "" = ""
-up' aas@(a:as)
-  | isLower a = up aas
-  | otherwise = aas
 
 ----------------------------------------------------------------
 
