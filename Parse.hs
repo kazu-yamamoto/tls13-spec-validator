@@ -1,7 +1,7 @@
 module Main where
 
 import Control.Monad (void)
-import Data.Char (toUpper, toLower)
+import Data.Char (toUpper, toLower, isLower)
 import Data.List (intersperse, isSuffixOf)
 import System.Random
 import Text.Parsec
@@ -272,12 +272,22 @@ ppCases cs = do
   putStrLn "    _ -> ()"
 
 ppCase :: CASE -> IO ()
-ppCase (CASE nm _) = do
+ppCase (CASE nm c) = do
     putStr "    "
     putStr (up nm)
-    putStr " -> seq (undefined :: "
-    putStr (toTypeName nm)
-    putStrLn ") ()"
+    putStr " -> seq "
+    let typ = caseName c
+    if isLower (head typ) || (typ == "NamedGroup") then do -- FIXME
+        putStr "(undefined :: "
+        putStr typ
+        putStrLn ") ()"
+      else do
+        putStr typ
+        putStrLn "{} ()"
+
+caseName :: NAMEORTYPE -> TYPENAME
+caseName (CASE1 typ) = typ
+caseName (CASE2 (TYPE _ typ _)) = typ
 
 ppField :: String -> String -> String -> IO ()
 ppField pre field typ = do
@@ -295,7 +305,7 @@ main = do
     case ex of
       Left err -> print err
       Right  x -> do
-          putStrLn "module TLS13 (TLSPlaintext, TLSInnerPlaintext, TLSCiphertext) where"
+          putStrLn "module TLS13 (TLSPlaintext(..), TLSInnerPlaintext(..), TLSCiphertext(..)) where"
           putStrLn "import Data.Word"
           putStrLn "type Uint8 = Word8"
           putStrLn "type Uint16 = Word16"
