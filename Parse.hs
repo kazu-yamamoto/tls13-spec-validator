@@ -3,6 +3,7 @@ module Main where
 import Control.Monad (void)
 import Data.Char (toUpper, toLower)
 import Data.List (intersperse, isSuffixOf)
+import System.Random
 import Text.Parsec
 import Text.Parsec.Language (javaStyle)
 import Text.Parsec.String
@@ -206,6 +207,15 @@ cap :: String -> String
 cap "" = ""
 cap (c:cs) = toUpper c : cs
 
+toTypeName :: String -> String
+toTypeName "" = ""
+toTypeName (c:cs) = toUpper c : toTypeName' cs
+
+toTypeName' :: String -> String
+toTypeName' "" = ""
+toTypeName' ('_':cs) = toTypeName cs
+toTypeName' (c:cs) = c : toTypeName' cs
+
 nonReserved :: String -> Bool
 nonReserved x = not ("_RESERVED" `isSuffixOf` x)
 
@@ -232,29 +242,42 @@ pp (STRUCT nm ms)  = do
     putStr " = "
     putStr nm
     putStr " {\n"
-    ppMembers nm ms
+    cs <- ppMembers nm ms
     putStr "  }\n"
+    ppCases cs
 
-ppMembers :: String -> [MEMBER] -> IO ()
-ppMembers _ [] = return ()
+ppMembers :: String -> [MEMBER] -> IO [CASE]
+ppMembers _ [] = return []
 ppMembers nm (m:ms) = do
     let nm' = down nm
-    ppMember ("    _" ++ nm' ++ "_") m
-    mapM_ (ppMember ("  , _" ++ nm' ++ "_")) ms
+    cs <- ppMember ("    _" ++ nm' ++ "_") m
+    css <- mapM (ppMember ("  , _" ++ nm' ++ "_")) ms
+    let cases = concat (cs:css)
+    return cases
 
-ppMember :: String -> MEMBER -> IO ()
-ppMember pre (FIXED (TYPE field typ _)) = ppField pre field typ
-ppMember pre (SELECT _ _ cs) = ppCases pre cs
+ppMember :: String -> MEMBER -> IO [CASE]
+ppMember pre (FIXED (TYPE field typ _)) = ppField pre field typ >> return []
+ppMember _   (SELECT _ _ cs) = return cs
 
-ppCases :: String -> [CASE] -> IO ()
-ppCases _   [] = return ()
-ppCases pre (c:cs) = do
-    ppCase pre c
-    mapM_ (ppCase "  , _") cs
+ppCases :: [CASE] -> IO ()
+ppCases [] = return ()
+ppCases cs = do
+  r <- randomIO :: IO Int
+  let a = "_a" ++ show (abs r)
+  putStr a
+  putStrLn " :: ()"
+  putStr a
+  putStrLn " = case undefined of"
+  mapM_ ppCase cs
+  putStrLn "    _ -> ()"
 
-ppCase :: String -> CASE -> IO ()
-ppCase pre (CASE field (CASE1 typ)) = ppField pre field typ
-ppCase pre (CASE field (CASE2 (TYPE _ typ _))) = ppField pre field typ
+ppCase :: CASE -> IO ()
+ppCase (CASE nm _) = do
+    putStr "    "
+    putStr (up nm)
+    putStr " -> seq (undefined :: "
+    putStr (toTypeName nm)
+    putStrLn ") ()"
 
 ppField :: String -> String -> String -> IO ()
 ppField pre field typ = do
@@ -272,6 +295,7 @@ main = do
     case ex of
       Left err -> print err
       Right  x -> do
+          putStrLn "module TLS13 (TLSPlaintext, TLSInnerPlaintext, TLSCiphertext) where"
           putStrLn "import Data.Word"
           putStrLn "type Uint8 = Word8"
           putStrLn "type Uint16 = Word16"
