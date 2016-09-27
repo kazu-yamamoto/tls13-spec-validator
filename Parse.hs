@@ -1,7 +1,7 @@
 module Main where
 
 import Control.Monad (void)
-import Data.Char (toUpper)
+import Data.Char (toUpper, toLower)
 import Data.List (intersperse, isSuffixOf)
 import Text.Parsec
 import Text.Parsec.Language (javaStyle)
@@ -196,6 +196,9 @@ tls13 = do
 
 ----------------------------------------------------------------
 
+down :: String -> String
+down = map toLower
+
 up :: String -> String
 up = map toUpper
 
@@ -210,7 +213,7 @@ pp :: DEF -> IO ()
 pp (ENUM nm _n xs) = do
     putStr "data "
     putStr nm
-    putStr " = \n      "
+    putStr " =\n      "
     let xs' = intersperse "\n    | " $ map up $ filter nonReserved $ map enumname xs
     mapM_ putStr xs'
     putStr "\n    deriving (Show,Eq,Ord,Enum,Bounded)\n"
@@ -229,14 +232,15 @@ pp (STRUCT nm ms)  = do
     putStr " = "
     putStr nm
     putStr " {\n"
-    ppMembers ms
+    ppMembers nm ms
     putStr "  }\n"
 
-ppMembers :: [MEMBER] -> IO ()
-ppMembers [] = return ()
-ppMembers (m:ms) = do
-    ppMember "    _" m
-    mapM_ (ppMember "  , _") ms
+ppMembers :: String -> [MEMBER] -> IO ()
+ppMembers _ [] = return ()
+ppMembers nm (m:ms) = do
+    let nm' = down nm
+    ppMember ("    _" ++ nm' ++ "_") m
+    mapM_ (ppMember ("  , _" ++ nm' ++ "_")) ms
 
 ppMember :: String -> MEMBER -> IO ()
 ppMember pre (FIXED (TYPE field typ _)) = ppField pre field typ
@@ -268,7 +272,6 @@ main = do
     case ex of
       Left err -> print err
       Right  x -> do
-          putStrLn "{-# LANGUAGE DuplicateRecordFields #-}"
           putStrLn "import Data.Word"
           putStrLn "type Uint8 = Word8"
           putStrLn "type Uint16 = Word16"
