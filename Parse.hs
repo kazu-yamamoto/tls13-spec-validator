@@ -92,6 +92,7 @@ type CASENAME = String
 data CASE = CASE CASENAME NAMEORTYPE deriving Show
 data NAMEORTYPE = CASE1 TYPENAME
                 | CASE2 TYPE
+                | CASEEMPTY
                 deriving Show
 
 ----------------------------------------------------------------
@@ -127,7 +128,7 @@ struct = do
     return $ STRUCT name lst
 
 smember :: Parser MEMBER
-smember = fixed <|> select
+smember = select <|> fixed
 
 fixed :: Parser MEMBER
 fixed = FIXED <$> type'
@@ -178,8 +179,16 @@ select = do
         reserved "case"
         name <- identifier
         colon
-        typ <- try (CASE2 <$> type') <|> (CASE1 <$> identifier)
+        typ <- try (CASE2 <$> type')
+           <|> try (CASE1 <$> identifier)
+           <|> caseempty
         return $ CASE name typ
+
+caseempty :: Parser NAMEORTYPE
+caseempty = do
+    reserved "struct"
+    _ <- braces $ return ()
+    return CASEEMPTY
 
 alias :: Parser DEF
 alias = do
@@ -277,7 +286,9 @@ ppCase (CASE nm c) = do
     putStr (up nm)
     putStr " -> seq "
     let typ = caseName c
-    if isLower (head typ) || (typ == "NamedGroup") then do -- FIXME
+    if typ == "()" then
+        putStrLn "() ()"
+     else if isLower (head typ) || (typ == "NamedGroup") then do -- FIXME
         putStr "(undefined :: "
         putStr typ
         putStrLn ") ()"
@@ -286,8 +297,9 @@ ppCase (CASE nm c) = do
         putStrLn "{} ()"
 
 caseName :: NAMEORTYPE -> TYPENAME
-caseName (CASE1 typ) = typ
+caseName (CASE1 typ)            = typ
 caseName (CASE2 (TYPE _ typ _)) = typ
+caseName CASEEMPTY              = "()"
 
 ppField :: String -> String -> String -> IO ()
 ppField pre field typ = do
