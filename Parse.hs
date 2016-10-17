@@ -158,7 +158,7 @@ type' = do
                 return $! x ^ y - z
     assign = do
         symbol "="
-        void $ braces $ sepBy natural comma
+        try (void . braces $ sepBy natural comma) <|> (void $ natural)
         return SCALAR
 
 select :: Parser MEMBER
