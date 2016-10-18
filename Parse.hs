@@ -89,11 +89,11 @@ data MEMBER = FIXED  TYPE
             deriving Show
 
 type CASENAME = String
-data CASE = CASE CASENAME NAMEORTYPE deriving Show
-data NAMEORTYPE = CASE1 TYPENAME
-                | CASE2 TYPE
-                | CASEEMPTY
-                deriving Show
+data CASE = CASE CASENAME [CASETYPE] deriving Show
+data CASETYPE = CASE1 TYPENAME
+              | CASE2 TYPE
+              | CASEEMPTY
+              deriving Show
 
 ----------------------------------------------------------------
 
@@ -165,7 +165,7 @@ select :: Parser MEMBER
 select = do
     reserved "select"
     sel <- parens selector
-    cases <- braces $ endBy1 caseItem semi
+    cases <- braces $ many1 caseItem
     mname <- optionMaybe identifier
     return $ SELECT mname sel cases
   where
@@ -179,12 +179,13 @@ select = do
         reserved "case"
         name <- identifier
         colon
-        typ <- try (CASE2 <$> type')
+        typs <- endBy1 caseBody semi
+        return $ CASE name typs
+    caseBody = try (CASE2 <$> type')
            <|> try (CASE1 <$> identifier)
            <|> caseempty
-        return $ CASE name typ
 
-caseempty :: Parser NAMEORTYPE
+caseempty :: Parser CASETYPE
 caseempty = do
     reserved "struct"
     _ <- braces $ return ()
@@ -281,25 +282,32 @@ ppCases cs = do
   putStrLn "    _ -> ()"
 
 ppCase :: CASE -> IO ()
-ppCase (CASE nm c) = do
+ppCase (CASE nm cts) = do
     putStr "    "
     putStr (up nm)
-    putStr " -> seq "
-    let typ = caseName c
-    if typ == "()" then
-        putStrLn "() ()"
-     else if isLower (head typ) || (typ == "NamedGroup") then do -- FIXME
-        putStr "(undefined :: "
-        putStr typ
-        putStrLn ") ()"
-      else do
-        putStr typ
-        putStrLn "{} ()"
+    putStr " -> "
+    mapM_ ppCaseType cts
+    putStrLn "()"
 
-caseName :: NAMEORTYPE -> TYPENAME
-caseName (CASE1 typ)            = typ
-caseName (CASE2 (TYPE _ typ _)) = typ
-caseName CASEEMPTY              = "()"
+ppCaseType :: CASETYPE -> IO ()
+ppCaseType ct
+  | typ == "()" = putStr "seq () $ "
+  | isLower (head typ) || (typ == "NamedGroup") = do
+        putStr "seq (undefined :: "
+        putStr typ
+        putStr ") $ "
+  | otherwise = do
+        putStr "seq "
+        putStr typ
+        putStr "{} $ "
+  where
+    typ = caseTypeName ct
+
+
+caseTypeName :: CASETYPE -> TYPENAME
+caseTypeName (CASE1 typ)            = typ
+caseTypeName (CASE2 (TYPE _ typ _)) = typ
+caseTypeName CASEEMPTY              = "()"
 
 ppField :: String -> String -> String -> IO ()
 ppField pre field typ = do
