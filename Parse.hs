@@ -239,11 +239,9 @@ pp (ENUM nm _n xs) = do
     putStr "\n    deriving (Show,Eq,Ord,Enum,Bounded)\n"
 pp (ALIAS (TYPE new old _)) = do
     let old' = cap old
-    putStr "newtype "
+    putStr "type "
     putStr new
     putStr " = "
-    putStr new
-    putStr " "
     putStr old'
     putStr "\n"
 pp (STRUCT nm ms)  = do
