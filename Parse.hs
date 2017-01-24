@@ -323,7 +323,7 @@ main = do
     case ex of
       Left err -> print err
       Right  x -> do
-          putStrLn "module TLS13 (TLSPlaintext(..), TLSInnerPlaintext(..), TLSCiphertext(..), Extension(..), CertificateExtension(..), CertificateEntry(..)) where"
+          putStrLn "module TLS13 (TLSPlaintext(..), TLSInnerPlaintext(..), TLSCiphertext(..), Extension(..), CertificateEntry(..), OIDFilter(..)) where"
           putStrLn "import Data.Word"
           putStrLn "type Uint8 = Word8"
           putStrLn "type Uint16 = Word16"
