@@ -239,9 +239,11 @@ pp (ENUM nm _n xs) = do
     putStr "\n    deriving (Show,Eq,Ord,Enum,Bounded)\n"
 pp (ALIAS (TYPE new old _)) = do
     let old' = cap old
-    putStr "type "
+    putStr "newtype "
     putStr new
     putStr " = "
+    putStr new
+    putStr " "
     putStr old'
     putStr "\n"
 pp (STRUCT nm ms)  = do
@@ -323,7 +325,7 @@ main = do
     case ex of
       Left err -> print err
       Right  x -> do
-          putStrLn "module TLS13 (TLSPlaintext(..), TLSInnerPlaintext(..), TLSCiphertext(..), Extension(..), CertificateEntry(..), OIDFilter(..), PskIdentity(..), PskBinderEntry(..), KeyShareClientHello(..), KeyShareServerHello(..), KeyShareHelloRetryRequest(..)) where"
+          putStrLn "module TLS13 (TLSPlaintext(..), TLSInnerPlaintext(..), TLSCiphertext(..), Extension(..), CertificateEntry(..), OIDFilter(..), PskIdentity(..), PskBinderEntry(..), KeyShareClientHello(..), KeyShareServerHello(..), KeyShareHelloRetryRequest(..), Random(..), CipherSuite(..), DistinguishedName(..)) where"
           putStrLn "import Data.Word"
           putStrLn "type Uint8 = Word8"
           putStrLn "type Uint16 = Word16"
